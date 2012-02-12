@@ -1,0 +1,17 @@
+
+CFLAGS=-I./src -I$(LUA_HOME)/include -I$(TCMALLOC_HOME)/include
+LDFLAGS=-L$(LUA_HOME)/lib -L$(TCMALLOC_HOME)/lib
+LIBS=-llua -ltcmalloc_minimal -ldl
+
+
+src  :
+	gcc -o redbridge server.c timer.c pool.c zmalloc.c anet.c  fdevent.c  request.c  sds.c hash.c -O2 -DUSE_EPOLL -DUSE_TCMALLOC    $(CFLAGS) $(LDFLAGS) $(LIBS)
+clean :
+	rm -rf redbridge
+	rm -rf Makefile
+install :
+	test -d $(PREFIX) || mkdir $(PREFIX)
+	cp -r ./script $(PREFIX) 
+	cp  redbridge $(PREFIX)
+	cp  RedBridge.lua $(PREFIX)
+
