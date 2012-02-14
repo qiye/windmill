@@ -7,7 +7,7 @@
  windmill 特点
  1. 拥有连接池功能, 连接可以复用
  2. 基于lua的coroutine的并发异步非堵塞编程。
- 
+ 3. HTTP Server
  
 -- lua example code 
 nicename   = redis.get("redis", "nicename");

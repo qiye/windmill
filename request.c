@@ -18,14 +18,19 @@ bool request_new(int fd, PF *handler, char *ip)
 	req->sentlen      = 0;
 	req->link         = NULL;
 	req->handler      = handler;
+	req->vm           = NULL;
+/*
 	req->vm           = lua_newthread(srv.L);
-	
-	memset(req->ip, 0, sizeof(req->ip));
-	strncpy(req->ip, ip, 15);
-	
+	req->ref          = luaL_ref(srv.L, LUA_REGISTRYINDEX);
 	lua_pushthread(req->vm);  
 	lua_pushlightuserdata(req->vm, req); 
 	lua_setglobal(req->vm, "__USERDATA__");
+*/
+
+	memset(req->ip, 0, sizeof(req->ip));
+	strncpy(req->ip, ip, 15);
+	
+
 	
 	srv.el->insert(fd, req, FDEVENT_READ);
 	
@@ -45,8 +50,14 @@ void request_change(int fd, struct request *req, PF *handler, fdevent_t filter)
 
 void request_delete(int fd, struct request *req)
 {
-
-	DEBUG_PRINT("req->fd = %d\r\n", req->fd);
+	int i;
+	
+	if(req->vm)
+	{
+		lua_settop(req->vm, 0); 
+		lua_gc(srv.L, LUA_GCCOLLECT, 0);
+		luaL_unref(srv.L, LUA_REGISTRYINDEX, req->ref);
+	}
 	//if(req->vm) lua_close(req->vm);
 	srv.el->delete(req->fd, req);
 	close(req->fd);

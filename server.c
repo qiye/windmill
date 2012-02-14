@@ -262,12 +262,19 @@ void processInputBuffer(struct request *req)
 	
 	parse_http_protocol(req, req->buf, sdslen(req->buf));
 	
+	lua_settop(srv.L, 0);
+	req->vm           = lua_newthread(srv.L);
+	req->ref          = luaL_ref(srv.L, LUA_REGISTRYINDEX);
+	lua_pushthread(req->vm);  
+	lua_pushinteger(req->vm, req->fd); 
+	lua_setglobal(req->vm, "__USERDATA__");
+	
 	if (luaL_loadfile(req->vm, req->path)) 
 	{
 		str = lua_tostring(req->vm, -1);
 		lua_pop(req->vm, 1);
 		
-		req->buf      = sdszero(req->buf);
+		sdsclear(req->buf);
 		req->buf      = sdscatprintf(req->buf, HTTP_HEADER, strlen(str),  str);
 		
 		request_change(req->fd, req, sockio_write, FDEVENT_WRITE);
@@ -275,7 +282,7 @@ void processInputBuffer(struct request *req)
 	}
 	
 	//srv.el->delete(req->fd, req);
-	req->buf = sdszero(req->buf);
+	sdsclear(req->buf);
 	lua_resume(req->vm, 0);
 	
 	return ;
@@ -331,7 +338,7 @@ void sockio_write(int fd, struct request *req)
 	{
 		req->sentlen  = 0;
 		req->state    = REDIS_RECV;
-		req->buf      = sdszero(req->buf); //Çå¿Õ×Ö·û´®
+		sdsclear(req->buf); //Çå¿Õ×Ö·û´®
 		
 		request_change(fd, req, sockio_read, FDEVENT_READ);
 	}
@@ -555,17 +562,19 @@ void pool_initialize(const char *key, void *value)
 
 int sockio_echo(lua_State *vm)
 {
+	int sockfd;
+	struct request *req;
 	const char     *str = luaL_checkstring(vm, 1);
-	//struct request *req = lua_touserdata(vm, 1);
-	//const char     *str = luaL_checkstring(vm, 2);
 	
 	lua_getglobal(vm, "__USERDATA__"); 
-	struct request *req  = lua_touserdata(vm, -1);   
+	sockfd  = luaL_checkinteger(vm, -1);   
 	lua_pop(vm, 1);  
 	
+	req = &srv.req[sockfd];
 	DEBUG_PRINT("str = %s\r\n", str);
+	
+	sdsclear(req->buf);
 	req->state    = HTTP_SEND;
-	req->buf      = sdszero(req->buf);
 	req->buf      = sdscatprintf(req->buf, HTTP_HEADER, strlen(str),  str);
 	
 	request_change(req->fd, req, sockio_write, FDEVENT_WRITE);

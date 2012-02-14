@@ -943,6 +943,7 @@ static int push_reply(lua_State * L, redisReply * pReply)
 	  break;
 
 	case REDIS_REPLY_STRING:
+		DEBUG_PRINT("str=%s\tlen=%d\r\n", pReply->str, pReply->len);
 	  lua_pushlstring(L, pReply->str, pReply->len);
 	  break;
 
@@ -1004,6 +1005,7 @@ bool parse_redis_protocol(struct request *req)
 	
 	reader = redisReaderCreate();
 	
+	DEBUG_PRINT("req->buf=%s\r\n", req->buf);
 	redisReaderFeed(reader, req->buf, sdslen(req->buf));
 	ret = redisReaderGetReply(reader,&reply);
 	
@@ -1048,6 +1050,7 @@ int redisFormatCommand(char **target, const char *format, ...)
 
 static void redis_pack_command(lua_State *vm, const char *id, char *cmd, int len)
 {
+	int sockfd;
 	struct request *req, *link;
 	
 	link = linkpool_get(id);
@@ -1057,8 +1060,10 @@ static void redis_pack_command(lua_State *vm, const char *id, char *cmd, int len
 	}
 	
 	lua_getglobal(vm, "__USERDATA__"); 
-	req  = lua_touserdata(vm, -1);   
+	sockfd  = luaL_checkinteger(vm, -1);   
 	lua_pop(vm, 1);  
+	
+	req = &srv.req[sockfd];
 	
 	req->link     = link;
 	req->state    = REDIS_SEND;

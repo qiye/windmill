@@ -27,6 +27,7 @@ struct request
 	char         *path;
 	char         ip[16];
 	lua_State    *vm;
+	int          ref;
 
 	http_method_t   http_method;
 	PF              *handler;
